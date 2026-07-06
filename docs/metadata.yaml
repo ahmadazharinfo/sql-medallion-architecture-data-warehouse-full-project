@@ -1,0 +1,93 @@
+# Pipeline Metadata Catalog
+# ==============================================================================
+# Purpose: Machine-readable metadata describing every source, layer, and
+# object in the pipeline. Intended for data catalog tooling, lineage
+# automation, or onboarding new team members quickly.
+# ==============================================================================
+
+project:
+  name: sql-medallion-architecture-data-warehouse-full-project
+  owner: Ahmad Azhar Almansoor
+  domain: Sales / Customer / Product Analytics
+  database_engine: Microsoft SQL Server
+  architecture_pattern: Medallion (Bronze / Silver / Gold)
+  data_model: Star Schema
+  last_updated: 2026-07-07
+
+sources:
+  - system: CRM
+    description: Customer relationship management system, source of customer, product, and sales transaction records.
+    ingestion_method: Flat file (CSV) export
+    refresh_frequency: Manual / batch (full load)
+    tables:
+      - name: cust_info
+        bronze_object: bronze.crm_cust_info
+        contains_pii: true
+        pii_columns: [cst_firstname, cst_lastname]
+      - name: prd_info
+        bronze_object: bronze.crm_prd_info
+        contains_pii: false
+      - name: sales_details
+        bronze_object: bronze.crm_sales_details
+        contains_pii: false
+
+  - system: ERP
+    description: Enterprise resource planning system, source of supplementary customer demographics, location, and product category data.
+    ingestion_method: Flat file (CSV) export
+    refresh_frequency: Manual / batch (full load)
+    tables:
+      - name: CUST_AZ12
+        bronze_object: bronze.erp_cust_az12
+        contains_pii: true
+        pii_columns: [bdate]
+      - name: LOC_A101
+        bronze_object: bronze.erp_loc_a101
+        contains_pii: false
+      - name: PX_CAT_G1V2
+        bronze_object: bronze.erp_px_cat_g1v2
+        contains_pii: false
+
+layers:
+  - name: bronze
+    purpose: Raw, unprocessed data as-is from source systems.
+    load_type: Full load (truncate and insert)
+    load_procedure: bronze.load_bronze
+    retention_policy: Retained indefinitely for traceability and re-processing.
+
+  - name: silver
+    purpose: Cleaned, standardized, and business-rule-applied data.
+    load_type: Full load (truncate and insert)
+    load_procedure: silver.load_silver
+    transformations:
+      - Deduplication (crm_cust_info, keep most recent by cst_create_date)
+      - Trimming and casing standardization
+      - Categorical value standardization (gender, marital status, product line, country)
+      - Derived columns (cat_id split from prd_key, prd_end_dt via LEAD)
+      - Business rule validation (sales = quantity * price)
+      - Key harmonization across source systems (cid alignment with cst_key)
+
+  - name: gold
+    purpose: Business-ready, dimensional model for reporting and analytics.
+    load_type: None (views, computed at query time)
+    objects:
+      - gold.dim_customers
+      - gold.dim_products
+      - gold.fact_sales
+
+data_classification:
+  pii_present: true
+  pii_handling_note: >
+    Birthdate and customer name fields are present in the Bronze and Silver
+    layers. Any external sharing of extracts from this warehouse should mask
+    or exclude these fields unless explicitly authorized.
+
+quality_assurance:
+  test_scripts:
+    - tests/quality_checks_silver.sql
+    - tests/quality_checks_gold.sql
+  checks_performed:
+    - Primary key null/duplicate checks
+    - Unwanted whitespace checks
+    - Categorical value standardization checks
+    - Referential integrity checks (fact to dimension surrogate keys)
+    - Business logic consistency checks (sales/quantity/price)
