@@ -14,6 +14,24 @@ The project follows the **Medallion Architecture**, structured into three layers
 - **Silver Layer**: Applies data cleansing, standardization, and normalization. This layer prepares data for analysis and resolves data quality issues found in the source systems.
 - **Gold Layer**: Contains business-ready data, modeled into a Star Schema (dimension and fact views) for reporting and analytics.
 
+![Data Warehouse Medallion Architecture](docs/data_warehouse_medallion_architecture_diagram.jpg)
+
+---
+
+## Data Integration Model
+
+The warehouse consolidates two independent source systems, CRM and ERP, which share overlapping customers and products under different key formats. The Silver layer harmonizes these keys (e.g., aligning ERP `cid` with CRM `cst_key`) so the two systems can be joined reliably in the Gold layer.
+
+![Source System Integration Model](docs/integration_model_diagram.jpg)
+
+---
+
+## Data Flow
+
+The diagram below traces the end-to-end movement of data, from the raw CRM and ERP source files, through the Bronze and Silver layers, into the final Gold layer views.
+
+![Warehouse Data Flow](docs/warehouse_data_flow_diagram.jpg)
+
 ---
 
 ## Project Structure
@@ -24,12 +42,20 @@ data-warehouse-project/
 ├── datasets/                           # Raw datasets used for the project (ERP and CRM data)
 │
 ├── docs/                               # Project documentation and architecture details
-│   ├── etl.drawio                      # Draw.io file showing ETL techniques and methods
-│   ├── data_architecture.drawio        # Draw.io file showing the project's architecture
-│   ├── data_catalog.md                 # Catalog of datasets, including field descriptions and metadata
-│   ├── data_flow.drawio                # Draw.io file for the data flow diagram
-│   ├── data_models.drawio               # Draw.io file for data models (star schema)
+│   ├── architecture_decisions.md       # Architecture Decision Records (ADRs) explaining key design choices
+│   ├── business_glossary.md            # Definitions of business terms used across the warehouse
+│   ├── data_catalog.md                 # Catalog of Gold layer datasets, including field descriptions and metadata
+│   ├── data_lineage.md                 # Traces how each Gold layer field is derived from source to final model
+│   ├── data_warehouse_medallion_architecture_diagram.drawio  # Draw.io file showing the project's architecture
+│   ├── data_warehouse_medallion_architecture_diagram.jpeg    # Exported image of the architecture diagram
+│   ├── integration_model_diagram.drawio                      # Draw.io file for the source system integration model
+│   ├── integration_model_diagram.jpeg                        # Exported image of the integration model diagram
+│   ├── metadata.yaml                   # Machine-readable metadata catalog (sources, layers, PII, QA checks)
 │   ├── naming-conventions.md           # Consistent naming guidelines for tables, columns, and files
+│   ├── sales_data_mart_star_schema_diagram.drawio            # Draw.io file for the Gold layer star schema
+│   ├── sales_data_mart_star_schema_diagram.jpeg              # Exported image of the star schema diagram
+│   ├── warehouse_data_flow_diagram.drawio                    # Draw.io file for the end-to-end data flow
+│   └── warehouse_data_flow_diagram.jpeg                      # Exported image of the data flow diagram
 │
 ├── scripts/                            # SQL scripts for ETL and transformations
 │   ├── init_database.sql               # Creates the DataWarehouse database and bronze/silver/gold schemas
@@ -88,9 +114,30 @@ data-warehouse-project/
 
 ---
 
+## Data Model (Star Schema)
+
+The Gold layer is modeled as a Star Schema, with `gold.fact_sales` at the center, connected to `gold.dim_customers` and `gold.dim_products` through warehouse-generated surrogate keys.
+
+![Sales Data Mart Star Schema](docs/sales_data_mart_star_schema_diagram.jpg)
+
+---
+
 ## Naming Conventions
 
 All database objects follow the standards defined in `docs/naming-conventions.md`, using `snake_case` throughout, with `<sourcesystem>_<entity>` for Bronze/Silver tables, `<category>_<entity>` for Gold tables/views, and `dwh_` prefixes for system-generated metadata columns.
+
+---
+
+## Documentation Index
+
+| Document                                                        | Description                                                                 |
+|-------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| [`docs/naming-conventions.md`](docs/naming-conventions.md)         | Naming rules for tables, columns, views, procedures, and files.                |
+| [`docs/data_catalog.md`](docs/data_catalog.md)                     | Column-level catalog of the Gold layer views.                                   |
+| [`docs/data_lineage.md`](docs/data_lineage.md)                     | Traces every Gold layer field back to its source file and transformation.       |
+| [`docs/business_glossary.md`](docs/business_glossary.md)          | Plain-language definitions of business terms used across the warehouse.        |
+| [`docs/architecture_decisions.md`](docs/architecture_decisions.md)| Architecture Decision Records explaining key design choices and trade-offs.     |
+| [`docs/metadata.yaml`](docs/metadata.yaml)                        | Machine-readable metadata catalog (sources, layers, PII flags, QA checks).      |
 
 ---
 
